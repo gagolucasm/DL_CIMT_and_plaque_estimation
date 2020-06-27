@@ -19,11 +19,24 @@ from segmentation import config
 from segmentation.data_generators import DataGenerator, get_data_augmentation_pipeline
 
 
-def read_imgs_from_dir(file_paths, ext, base_path):
+def load_images_from_directory(file_paths, ext, base_path):
+    """
+    Loads and resize all the images in a list of paths with a given extension
+    :param file_paths: list of paths containing images
+    :param ext: image file extension to look for
+    :param base_path: base path to append to file_paths
+    :return: a list of loaded and resized images
+    """
     return [cv2.resize(cv2.imread(base_path + img_path + ext), config.INPUT_SHAPE) for img_path in file_paths]
 
 
 def preprocess_masks(masks, binarize=False):
+    """
+    Preprocess masks before training
+    :param masks: numpy array with the masks
+    :param binarize: boolean indicating if only one class will be used for training
+    :return:
+    """
     masks = np.array(masks)
     if binarize:
         # Make it binary
@@ -38,7 +51,12 @@ def preprocess_masks(masks, binarize=False):
     return keras.utils.to_categorical(masks)
 
 
-def plot_mask(img):
+def prepare_mask_for_plotting(img):
+    """
+    Auxiliary function to convert a mask into something more visually appealing
+    :param img: original mask
+    :return: colored mask
+    """
     if img.shape[2] > 1:
         img = np.argmax(img, axis=2)
     else:
@@ -60,6 +78,14 @@ def plot_mask(img):
 
 
 def plot_img_and_mask(images, masks, index=None, result=None, paths=None):
+    """
+    Plots images alongside with respective masks
+    :param images: numpy array of images
+    :param masks: numpy array of masks
+    :param index: if not None, plots an specific index
+    :param result: if not None, it should be the prediction for the selected images and masks
+    :param paths: if not None, a path indicating the origin of the image used for the title of the plot
+    """
     if index is None:
         index = random.randint(0, len(images) - 1)
     img = images[index]
@@ -73,13 +99,13 @@ def plot_img_and_mask(images, masks, index=None, result=None, paths=None):
     if paths is not None:
         plt.title(str(index) + ' / ' + path)
     plt.subplot(1, 3, 2)
-    plt.imshow(plot_mask(mask), interpolation='none')
+    plt.imshow(prepare_mask_for_plotting(mask), interpolation='none')
     plt.subplot(1, 3, 3)
     if result is None:
         plt.imshow(img, interpolation='none')
-        plt.imshow(plot_mask(mask), 'jet', interpolation='none', alpha=0.5)
+        plt.imshow(prepare_mask_for_plotting(mask), 'jet', interpolation='none', alpha=0.5)
     else:
-        plt.imshow(plot_mask(result), interpolation='none')
+        plt.imshow(prepare_mask_for_plotting(result), interpolation='none')
 
     # plt.contour(plot_mask(mask), [0.5], linewidths=1.2, colors='y')
 
@@ -87,14 +113,33 @@ def plot_img_and_mask(images, masks, index=None, result=None, paths=None):
 
 
 def dice_coef(y_true, y_pred, smooth=1.0):
+    """
+    Performs the dice coefficient metric between two tensors
+    :param y_true: gt tensor
+    :param y_pred: predicted tensor
+    :param smooth: smooth parameter
+    :return: dice coefficient
+    """
     y_true_f = K.flatten(y_true)
     y_pred_f = K.flatten(y_pred)
     intersection = K.sum(y_true_f * y_pred_f)
     return (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
 
 
-def generate_mosaic(images, paths, masks, results, n_items=30):
-    n_items = min(n_items, len(images))
+def generate_mosaic(images, paths, masks, results, n_items=None):
+    """
+    Generates a mosaic to easily compare original images, ground truth and predictions
+    :param images: numpy array containing original images
+    :param paths: list of paths to original images
+    :param masks: numpy array containing gt masks
+    :param results: numpy array containing predicted masks
+    :param n_items: optional, if set can limit the number of elements in the mosaic
+    """
+    if n_items is not None:
+        n_items = min(n_items, len(images))
+    else:
+        n_items = len(images)
+
     fig, ax = plt.subplots(n_items, 3, figsize=(20, 5 * n_items))
 
     for index in range(0, n_items):
@@ -105,10 +150,10 @@ def generate_mosaic(images, paths, masks, results, n_items=30):
         plt.imshow(img, interpolation='none')
         plt.title(paths[index])
         plt.subplot(n_items, 3, 3 * index + 2)
-        plt.imshow(plot_mask(mask), interpolation='none')
+        plt.imshow(prepare_mask_for_plotting(mask), interpolation='none')
         plt.title('Ground truth')
         plt.subplot(n_items, 3, 3 * index + 3)
-        plt.imshow(plot_mask(result), interpolation='none')
+        plt.imshow(prepare_mask_for_plotting(result), interpolation='none')
         plt.title('Prediction. Dice: {:.2f}, IoU: {:.2f}'.format(K.get_value(dice_coef(mask, result)),
                                                                  K.get_value(iou_metric(mask, result))))
 
@@ -117,13 +162,19 @@ def generate_mosaic(images, paths, masks, results, n_items=30):
     plt.show()
 
 
-def get_mean_IM_error(data):
+def get_total_IMT_value(data, database=config.DATABASE):
+    """
+    Calculates the total pixels labeled as intima media in a given set of masks
+    :param data: numpy array with masks
+    :param database: database of origin of the masks, can be BULB or CCA
+    :return: total IM value of all masks
+    """
     total_sum = 0
-    if config.DATABASE == 'BULB':
+    if database == 'BULB':
         for element in data:
             _, element = cv2.threshold(element, 0.5, 1, cv2.THRESH_BINARY)
             total_sum += np.sum(element[:, :, 4] + element[:, :, 3] + element[:, :, 2])
-    if config.DATABASE == 'CCA':
+    if database == 'CCA':
         for element in data:
             _, element = cv2.threshold(element, 0.5, 1, cv2.THRESH_BINARY)
             total_sum += np.sum(element[:, :, 4])
@@ -142,6 +193,8 @@ if __name__ == '__main__':
         X_test_path = '../datasets/CCA/TRAINTEST/ORIGINALS/TEST_jpg/'
         y_train_path = '../datasets/CCA/TRAINTEST/GT/train_gt/'
         y_test_path = '../datasets/CCA/TRAINTEST/GT/test18_gt/'
+    else:
+        raise Exception('Unrecognized database {}'.format(config.DATABASE))
 
     X_train_paths = natsorted(os.listdir(X_train_path))
     X_test_paths = natsorted(os.listdir(X_test_path))
@@ -155,14 +208,14 @@ if __name__ == '__main__':
         [os.path.splitext(x)[0] for x in y_test_paths])))
 
     if config.DATABASE == 'CCA':
-        X_train = read_imgs_from_dir(train_paths, '.jpg', X_train_path)
-        X_test = read_imgs_from_dir(test_paths, '.jpg', X_test_path)
+        X_train = load_images_from_directory(train_paths, '.jpg', X_train_path)
+        X_test = load_images_from_directory(test_paths, '.jpg', X_test_path)
     elif config.DATABASE == 'BULB':
-        X_train = read_imgs_from_dir(train_paths, '.png', X_train_path)
-        X_test = read_imgs_from_dir(test_paths, '.png', X_test_path)
+        X_train = load_images_from_directory(train_paths, '.png', X_train_path)
+        X_test = load_images_from_directory(test_paths, '.png', X_test_path)
 
-    y_train = read_imgs_from_dir(train_paths, '.png', y_train_path)
-    y_test = read_imgs_from_dir(test_paths, '.png', y_test_path)
+    y_train = load_images_from_directory(train_paths, '.png', y_train_path)
+    y_test = load_images_from_directory(test_paths, '.png', y_test_path)
 
     assert len(X_train) == len(y_train), 'The length of x and y train should be equal'
     assert len(X_test) == len(y_test), 'The length of x and y test should be equal'
@@ -206,7 +259,7 @@ if __name__ == '__main__':
 
     total_loss = sm.losses.binary_focal_dice_loss
 
-    optim = keras.optimizers.Adam()
+    optimizer = keras.optimizers.Adam()
 
     iou_metric = sm.metrics.IOUScore(threshold=0.5)
     f_score_metric = sm.metrics.FScore(threshold=0.5)
@@ -216,7 +269,7 @@ if __name__ == '__main__':
                'accuracy',
                tf.keras.metrics.Recall()]
 
-    model.compile(optim, total_loss, metrics)
+    model.compile(optimizer, total_loss, metrics)
 
     callbacks = [
         keras.callbacks.ModelCheckpoint(best_weights_path, save_weights_only=True, save_best_only=True, mode='min'),
@@ -285,13 +338,14 @@ if __name__ == '__main__':
     print(model.evaluate(np.array(X_test), y_test))
 
     predicted_masks_train = model.predict(np.array(X_train))
-    generate_mosaic(X_train, X_train_paths, y_train, predicted_masks_train)
+    generate_mosaic(X_train, X_train_paths, y_train, predicted_masks_train, n_items=10)
 
     predicted_masks_test = model.predict(np.array(X_test))
     generate_mosaic(X_test, test_paths, y_test, predicted_masks_test)
 
-    print('Mean difference in imt pixels in train: {}'.format((get_mean_IM_error(y_train) -
-                                                               get_mean_IM_error(predicted_masks_train)) / len(
+    print('Mean difference in imt pixels in train: {}'.format((get_total_IMT_value(y_train) -
+                                                               get_total_IMT_value(predicted_masks_train)) / len(
         y_train)))
-    print('Mean difference in imt pixels in test:  {}'.format((get_mean_IM_error(y_test) -
-                                                               get_mean_IM_error(predicted_masks_test)) / len(y_test)))
+    print('Mean difference in imt pixels in test:  {}'.format((get_total_IMT_value(y_test) -
+                                                               get_total_IMT_value(predicted_masks_test)) / len(
+        y_test)))

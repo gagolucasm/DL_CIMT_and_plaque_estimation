@@ -47,7 +47,7 @@ First of all, you need to train the segmentation model. This can be done by sele
 ```
 python3 train_semantic_segmentation.py
 ```
-This will generate a folder for the best weights evaluated on the validation set. Then, you have to run 
+in the `segmentation` folder. This will generate a folder for the best weights evaluated on the validation set. Then, you have to run 
 ```
 python3 predict_segmentation_masks.py
 ```

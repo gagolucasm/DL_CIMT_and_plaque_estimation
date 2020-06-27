@@ -146,6 +146,7 @@ if __name__ == '__main__':
         df = helpers.add_previous_results(dataframe=df, database=config.DATABASE)
 
     # Calculate IMT from mask
+    print('Calculating CIMT from segmentation results, this could take a while')
     df['predicted_imt_tuple'] = df['mask_path'].apply(lambda x: calculate_imt(x))
     df['predicted_imt_avg'] = df['predicted_imt_tuple'].apply(lambda x: x[0])
     df['predicted_imt_max'] = df['predicted_imt_tuple'].apply(lambda x: x[1])
