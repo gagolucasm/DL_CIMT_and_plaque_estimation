@@ -163,16 +163,18 @@ if __name__ == '__main__':
 
     df['imt_squared_error_max'] = np.square(df['imt_error_max'])
     df['imt_squared_error_avg'] = np.square(df['imt_error_avg'])
-    print('Mean of max error:         {}'.format(df['imt_error_max'].mean()))
-    print('Mean of max squared error: {}'.format(df['imt_squared_error_max'].mean()))
+    print('IMT max error:         {}'.format(df['imt_error_max'].mean()))
+    print('IMT max squared error: {}'.format(df['imt_squared_error_max'].mean()))
 
     df['imt_error_max'].hist()
-    print('Mean of avg error: {}'.format(df['imt_error_avg'].mean()))
-    print('Mean of avg squared error: {}'.format(df['imt_squared_error_avg'].mean()))
+    print('IMT avg error: {}'.format(df['imt_error_avg'].mean()))
+    print('IMT avg squared error: {}'.format(df['imt_squared_error_avg'].mean()))
 
+    # Evaluate images with the highest error
     df['imt_error_avg'].hist()
     df_results = df.sort_values(by=['imt_error_avg'])
 
+    print('Showing images with the highest error')
     for key in df_results.index[:3]:
         explore_result(df_results, key)
     f, ax = plt.subplots(1, figsize=(8, 5))
@@ -186,10 +188,8 @@ if __name__ == '__main__':
                                df_results['gt_imt_avg'].to_numpy(), ax=ax)
     plt.title('Error avg')
     plt.show()
-
-    df_results['gt_imt_max'].corr(df_results['predicted_imt_max'])
-
-    df_results['gt_imt_avg'].corr(df_results['predicted_imt_avg'])
+    print('IMT max correlation coefficient: {}'.format(df_results['gt_imt_max'].corr(df_results['predicted_imt_max'])))
+    print('IMT avg correlation coefficient: {}'.format(df_results['gt_imt_avg'].corr(df_results['predicted_imt_avg'])))
 
     ax = df_results.plot.scatter(x='gt_imt_max', y='predicted_imt_max')
     plt.title('Scatter plot IMT max')

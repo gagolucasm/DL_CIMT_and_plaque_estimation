@@ -57,7 +57,11 @@ to generate a folder called `segmentation_results`, containing the predicted mas
 ![Example of CCA test data](images/example_CCA.png)
 Once REGICOR images are segmented, we move into the prediction of the carotid intima media thickness maximum and average value, and the presence of plaque. The [config.py](config.py) file can be used to easily change and test different configurations. 
  
- In order to optimize the CNN architecture, you have to run:
+A simple and more traditional approach is to get the mean and max value of each column in the predicted mask, and then distinguish the plaque using the Mannheim Consensus (IMT max>1.5). To predict how well this system perform on this scenario, just run:
+ ```
+python3 estimate_imt.py
+```
+Another option proposed in the paper is to train a CNN to predict from the original image or the mask the average and maximum IMT, as well as the presence of plaque. In order to optimize the CNN architecture, you have to run:
  ```
 python3 network_optimization.py
 ```
