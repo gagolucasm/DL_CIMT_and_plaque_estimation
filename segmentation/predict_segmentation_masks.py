@@ -33,11 +33,10 @@ activation = 'sigmoid' if config.PREDICT_ONLY_IM else 'softmax'
 # create model
 model = sm.Unet(config.BACKBONE, classes=n_classes, activation=activation)
 
-best_weights_path = 'best_model_{}_unet_ef0_weights.h5'.format(config.DATABASE)
+best_weights_path = 'weights/best_model_{}_unet_ef0_weights.h5'.format(config.DATABASE)
 model.load_weights(best_weights_path)
 
 # ## Evaluation of IMT
-# ---
 
 # TODO: duplicated code, convert into function
 if config.DATABASE == 'CCA':
@@ -97,7 +96,7 @@ def predict_all_images(imts_regicor):
             cv2.imwrite(prediction_path, prediction)
 
             data['img:' + image_right_path[0][:-4]] = {'complete_path': complete_right_path,
-                                                       'mask_path': prediction_path,
+                                                       'mask_path': os.path.join('segmentation', prediction_path),
                                                        'gt_imt_max': row['imtm_rcca_s'],
                                                        'gt_imt_avg': row['imta_rcca_s'], 'side': 'right'}
 
@@ -120,7 +119,7 @@ def predict_all_images(imts_regicor):
             cv2.imwrite(prediction_path, prediction)
 
             data['img:' + image_left_path[0][:-4]] = {'complete_path': complete_left_path,
-                                                      'mask_path': prediction_path,
+                                                      'mask_path': os.path.join('segmentation', prediction_path),
                                                       'gt_imt_max': row['imtm_lcca_s'],
                                                       'gt_imt_avg': row['imta_lcca_s'], 'side': 'left'}
 

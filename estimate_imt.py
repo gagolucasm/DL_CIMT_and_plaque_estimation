@@ -131,7 +131,7 @@ def explore_result(df, key, thr=config.IMT_THRESHOLD, predict_imt=True):
 if __name__ == '__main__':
 
     # Load data from disk
-    data = np.load('complete_data_{}.npy'.format(config.DATABASE))
+    data = np.load('segmentation/complete_data_{}.npy'.format(config.DATABASE))
     data = data[()]['data']
 
     # Convert to dataframe and filter invalid values

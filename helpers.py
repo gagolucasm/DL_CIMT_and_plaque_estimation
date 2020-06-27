@@ -71,8 +71,8 @@ def add_previous_results(dataframe, database):
     assert database in ['CCA', 'BULB'], 'No previous results for this database'
 
     if database == 'CCA':
-        df_names = pd.read_csv('results_maria_del_mar/names_postprT56_1cm.csv', names=['file_name'], header=None)
-        df_prev_results = pd.read_csv('results_maria_del_mar/imts_postprT56_1cm.csv',
+        df_names = pd.read_csv('results_mdm_et_al/names_postprT56_1cm.csv', names=['file_name'], header=None)
+        df_prev_results = pd.read_csv('results_mdm_et_al/imts_postprT56_1cm.csv',
                                       names=['mdm_imtmax_est',  # Max IMT estimated with Tiramisu56
                                              'gt_imtm_CCA',  # Max IMT from Ground Truth (AMC)
                                              'mdm_imtavg_est',  # Mean IMT estimated with Tiramisu56
@@ -81,9 +81,9 @@ def add_previous_results(dataframe, database):
 
         df_prev_results.index = df_names['file_name']
     elif database == 'BULB':
-        df_names = pd.read_csv('results_maria_del_mar/names__postprT67_BUnewGT_4L.csv', names=['file_name'],
+        df_names = pd.read_csv('results_mdm_et_al/names__postprT67_BUnewGT_4L.csv', names=['file_name'],
                                header=None)
-        df_prev_results = pd.read_csv('results_maria_del_mar/imts_postprT67_BUnewGT_4L.csv',
+        df_prev_results = pd.read_csv('results_mdm_et_al/imts_postprT67_BUnewGT_4L.csv',
                                       names=['mdm_imtmax_est',  # Max IMT estimated with Tiramisu56
                                              'gt_imtm_CCA',  # Max IMT from Ground Truth (AMC)
                                              'mdm_imtavg_est',  # Mean IMT estimated with Tiramisu56

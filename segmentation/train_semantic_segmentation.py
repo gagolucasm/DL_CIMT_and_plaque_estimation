@@ -133,15 +133,15 @@ def get_mean_IM_error(data):
 if __name__ == '__main__':
 
     if config.DATABASE == 'BULB':
-        X_train_path = 'datasets/BULB/TRAINTEST/ORIGINALS/ORI_BULBtrain/'
-        X_test_path = 'datasets/BULB/TRAINTEST/ORIGINALS/ORI_BULBtest/'
-        y_train_path = 'datasets/BULB/TRAINTEST/GT/GT_BULBtrain/'
-        y_test_path = 'datasets/BULB/TRAINTEST/GT/GT_BULBtest/'
+        X_train_path = '../datasets/BULB/TRAINTEST/ORIGINALS/ORI_BULBtrain/'
+        X_test_path = '../datasets/BULB/TRAINTEST/ORIGINALS/ORI_BULBtest/'
+        y_train_path = '../datasets/BULB/TRAINTEST/GT/GT_BULBtrain/'
+        y_test_path = '../datasets/BULB/TRAINTEST/GT/GT_BULBtest/'
     elif config.DATABASE == 'CCA':
-        X_train_path = 'datasets/CCA/TRAINTEST/ORIGINALS/TRAIN_jpg/'
-        X_test_path = 'datasets/CCA/TRAINTEST/ORIGINALS/TEST_jpg/'
-        y_train_path = 'datasets/CCA/TRAINTEST/GT/train_gt/'
-        y_test_path = 'datasets/CCA/TRAINTEST/GT/test18_gt/'
+        X_train_path = '../datasets/CCA/TRAINTEST/ORIGINALS/TRAIN_jpg/'
+        X_test_path = '../datasets/CCA/TRAINTEST/ORIGINALS/TEST_jpg/'
+        y_train_path = '../datasets/CCA/TRAINTEST/GT/train_gt/'
+        y_test_path = '../datasets/CCA/TRAINTEST/GT/test18_gt/'
 
     X_train_paths = natsorted(os.listdir(X_train_path))
     X_test_paths = natsorted(os.listdir(X_test_path))
@@ -198,7 +198,8 @@ if __name__ == '__main__':
     # create model
     model = sm.Unet(config.BACKBONE, classes=n_classes, activation=activation)
 
-    best_weights_path = 'best_model_{}_unet_ef0_weights.h5'.format(config.DATABASE)
+    os.makedirs('weights')
+    best_weights_path = 'weights/best_model_{}_unet_ef0_weights.h5'.format(config.DATABASE)
 
     if config.LOAD_PRETRAINED_MODEL:
         model.load_weights(best_weights_path)
