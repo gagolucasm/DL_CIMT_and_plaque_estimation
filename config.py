@@ -7,8 +7,8 @@ DATABASE = 'CCA'  # 'BULB' or 'CCA'
 RANDOM_SEED = 21  # To ensure reproducibility of results
 COMPARE_RESULTS = True  # Compare with https://doi.org/10.1016/j.artmed.2019.101784
 DEBUG = False  # Prints and plots extra information for debugging purposes
-SILENT_MODE = False  # Suppress all outputs # TODO: Implement
-MIXED_PRECISION = True  # models run faster and use less memory, needs > compute capability 7.0
+SILENT_MODE = False  # Suppress all outputs
+MIXED_PRECISION = True  # models run faster and use less memory, needs compute capability > 7.0
 
 # NN IMT prediction parameters
 TARGET_COLUMNS = {'imt_max': {'predict': True, 'weight': 1., 'loss': 'mean_squared_error'},
