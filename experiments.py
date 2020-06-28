@@ -21,4 +21,4 @@ if __name__ == '__main__':
                                             'loss': 'binary_crossentropy' if item == 'plaque' else 'mean_squared_error'}
 
                 predict_imt.train_imt_predictor(database=database, input_type=input_type, input_shape=input_shape,
-                                                target_columns=target_columns)
+                                                target_columns=target_columns, silent_mode=True)

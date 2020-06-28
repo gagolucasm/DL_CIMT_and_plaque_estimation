@@ -57,12 +57,12 @@ def nn_predict_imt(path, model, input_shape, target_columns):
     return result
 
 
-def get_metrics(df, experiment_id, target_columns, subset=None, compare=True):
+def get_metrics(df, exp_id, target_columns, subset=None, compare=True):
     """
     Generate a report of the performance of a model. A subset can be specified, and results can be compared with the ones
     in https://doi.org/10.1016/j.artmed.2019.101784 .
     :param target_columns:
-    :param experiment_id:
+    :param exp_id:
     :param df: pandas dataframe with paths to images of interest for the experiment
     :param subset: subset of data to evaluate, can be train, valid or test.
     :param compare: boolean indicating if results should be compared with the ones in
@@ -70,33 +70,41 @@ def get_metrics(df, experiment_id, target_columns, subset=None, compare=True):
     """
     mode_list = [key for key, value in target_columns.items() if value['predict']]
     for nn_prediction_mode in mode_list:
-        print('\nPredictions of {}'.format(experiment_id))
+        print('\nPredictions of {}'.format(nn_prediction_mode))
         # TODO: repeated lines, convert into functions
         if subset is not None:
             df = df[df['training_group'] == subset]
             print('Filtering to {}'.format(subset))
         if nn_prediction_mode != 'plaque':
-            print('Mean nn predictions error: {:.4f}'.format(
-                df['nn_predictions_error_{}'.format(nn_prediction_mode)].mean()))
-            print('Mean nn predictions squared error: {:.4f}'.format(
-                df['nn_predictions_squared_error_{}'.format(nn_prediction_mode)].mean()))
-            print('Correlation coeficient: {:.4f}'.format(df['gt_{}'.format(nn_prediction_mode)].corr(
-                df['nn_predictions_{}'.format(nn_prediction_mode)])))
+            print('Mean {} nn predictions error: {:.4f}'.format(nn_prediction_mode,
+                                                                df['nn_predictions_error_{}'.format(
+                                                                    nn_prediction_mode)].mean()))
+            print('Mean {} nn predictions squared error: {:.4f}'.format(nn_prediction_mode,
+                                                                        df['nn_predictions_squared_error_{}'.format(
+                                                                            nn_prediction_mode)].mean()))
+            print('{} Correlation coefficient: {:.4f}'.format(nn_prediction_mode,
+                                                              df['gt_{}'.format(nn_prediction_mode)].corr(
+                                                                  df['nn_predictions_{}'.format(nn_prediction_mode)])))
             if compare:
                 print('MdM results for this subset:')
-                print('Mean nn predictions error: {:.4f}'.format(
-                    df['mdm_nn_predictions_error_{}'.format(nn_prediction_mode)].mean()))
-                print('Mean nn predictions squared error: {:.4f}'.format(
-                    df['mdm_nn_predictions_squared_error_{}'.format(nn_prediction_mode)].mean()))
-                print('Correlation coeficient: {:.4f}'.format(df['gt_{}'.format(nn_prediction_mode)].corr(
-                    df['mdm_{}_est'.format(nn_prediction_mode)])))
+                print('Mean {} nn predictions error: {:.4f}'.format(nn_prediction_mode,
+                                                                    df['mdm_nn_predictions_error_{}'.format(
+                                                                        nn_prediction_mode)].mean()))
+                print('Mean {} nn predictions squared error: {:.4f}'.format(nn_prediction_mode,
+                                                                            df[
+                                                                                'mdm_nn_predictions_squared_error_{}'.format(
+                                                                                    nn_prediction_mode)].mean()))
+                print('{} Correlation coeficient: {:.4f}'.format(nn_prediction_mode,
+                                                                 df['gt_{}'.format(nn_prediction_mode)].corr(
+                                                                     df['mdm_{}_est'.format(nn_prediction_mode)])))
             f, ax = plt.subplots(1, figsize=(8, 5))
             sm.graphics.mean_diff_plot(df['nn_predictions_{}'.format(nn_prediction_mode)].to_numpy(),
                                        df['gt_{}'.format(nn_prediction_mode)].to_numpy(), ax=ax)
-            plt.title('Error {}'.format(nn_prediction_mode))
+            plt.title('Error {}, exp: {}'.format(nn_prediction_mode, exp_id))
             plt.show()
             ax = df.plot.scatter(x='gt_{}'.format(nn_prediction_mode),
                                  y='nn_predictions_{}'.format(nn_prediction_mode))
+            plt.title('Scatter plot {}, exp: {}'.format(nn_prediction_mode, exp_id))
             plt.show()
             if nn_prediction_mode == 'imt_max':
                 for i in range(10, 16):
@@ -152,9 +160,11 @@ def plot_predictions(model, generator, plot_images=False, loops=1):
     print('Mean error: {}'.format(sum(errors) / len(errors)))
 
 
-def evaluate_model(model, dataframe, input_column, target_columns, input_shape, debug=False, compare_results=False):
+def evaluate_model(model, dataframe, input_column, target_columns, input_shape, exp_id, debug=False,
+                   compare_results=False):
     """
     Evaluates model on train, validation and test data.
+    :param exp_id:
     :param target_columns:
     :param compare_results:
     :param debug:
@@ -188,9 +198,9 @@ def evaluate_model(model, dataframe, input_column, target_columns, input_shape, 
                     'mdm_' + error_column_name]
 
     # get_metrics(dataframe)
-    get_metrics(dataframe, 'train', target_columns=target_columns)
-    get_metrics(dataframe, 'valid', target_columns=target_columns)
-    get_metrics(dataframe, 'test', target_columns=target_columns)
+    get_metrics(dataframe, exp_id=exp_id, subset='train', target_columns=target_columns, compare=compare_results)
+    get_metrics(dataframe, exp_id=exp_id, subset='valid', target_columns=target_columns, compare=compare_results)
+    get_metrics(dataframe, exp_id=exp_id, subset='test', target_columns=target_columns, compare=compare_results)
 
 
 def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, input_shape=config.INPUT_SHAPE,
@@ -201,7 +211,7 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
                         n_workers=config.WORKERS, max_queue_size=config.MAX_QUEUE_SIZE,
                         data_augmentation_params=config.DATA_AUGMENTATION_PARAMS, train_percent=config.TRAIN_PERCENTAGE,
                         valid_percent=config.VAL_PERCENTAGE, test_percent=config.TEST_PERCENTAGE,
-                        resume_training=config.RESUME_TRAINING):
+                        resume_training=config.RESUME_TRAINING, silent_mode=config.SILENT_MODE):
     """
     Complete training pipeline. Values can be set on the config.py or directly on function call
     :param database:
@@ -256,7 +266,8 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
     device_name = tf.test.gpu_device_name()
     if device_name != '/device:GPU:0':
         raise SystemError('GPU device not found')
-    print('Found GPU at: {}'.format(device_name))
+    if not silent_mode:
+        print('Found GPU at: {}'.format(device_name))
 
     if input_type == 'img':
         input_column = 'complete_path'
@@ -347,8 +358,8 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
                             workers=n_workers,
                             use_multiprocessing=False,  # tf 2.2 recommends using tf.data for multiprocessing
                             callbacks=callbacks)
-
-        helpers.plot_training_history(history, experiment_id)
+        if not silent_mode:
+            helpers.plot_training_history(history, experiment_id)
 
     # Load the best performing weights for the validation set
     model.load_weights(weights_path)
@@ -357,9 +368,10 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
 
     if debug:
         plot_predictions(model, test_generator)
-
-    evaluate_model(model=model, dataframe=df, input_shape=input_shape, input_column=input_column,
-                   target_columns=target_columns)
+    if not silent_mode:
+        evaluate_model(model=model, dataframe=df, input_shape=input_shape, input_column=input_column,
+                       target_columns=target_columns, compare_results=compare_results, debug=debug,
+                       exp_id=experiment_id)
 
     helpers.save_model(model, model_path)
 
