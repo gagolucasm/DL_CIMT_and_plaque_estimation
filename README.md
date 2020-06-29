@@ -2,6 +2,7 @@
 
 This repository contains the code to reproduce the results in "Deep learning techniques for atherosclerotic plaque detection in the carotid artery". It also provides an easy to use framework for future experiments.
 
+![Example from CCA database](images/mosaic_cca_crop.png)
 ## Setup
 You can start cloning this repository to your system:
 ```
