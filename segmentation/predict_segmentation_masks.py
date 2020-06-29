@@ -7,7 +7,6 @@ import sys
 import cv2
 import numpy as np
 import segmentation_models as sm
-import tensorflow as tf
 import tqdm
 
 from segmentation import config, helpers
@@ -25,7 +24,7 @@ def predict_all_images(dataframe):
             image = cv2.imread(complete_right_path)
             image = cv2.resize(image, config.INPUT_SHAPE)
             prediction = np.squeeze(model.predict(np.expand_dims(image, axis=0)))
-            if config.DATABASE == 'BULB':
+            if config.DATABASE == 'BULB' and not config.SINGLE_IMT_CLASS_BULB:
                 prediction = prediction[:, :, 4] + prediction[:, :, 3] + prediction[:, :, 2]
             else:
                 prediction = prediction[:, :, 4]
@@ -49,7 +48,7 @@ def predict_all_images(dataframe):
             image = cv2.imread(complete_left_path)
             image = cv2.resize(image, config.INPUT_SHAPE)
             prediction = np.squeeze(model.predict(np.expand_dims(image, axis=0)))
-            if config.DATABASE == 'BULB':
+            if config.DATABASE == 'BULB' and not config.SINGLE_IMT_CLASS_BULB:
                 prediction = prediction[:, :, 4] + prediction[:, :, 3] + prediction[:, :, 2]
             else:
                 prediction = prediction[:, :, 4]
@@ -69,14 +68,18 @@ def predict_all_images(dataframe):
 
 
 if __name__ == '__main__':
-    # Temporal fix due to tensorflow bug. See https://github.com/tensorflow/tensorflow/issues/24828
-    tf.compat.v1.ConfigProto().gpu_options.allow_growth = True
-    session = tf.compat.v1.InteractiveSession(config=config)
-    helpers.check_gpu()
 
     preprocess_input = sm.get_preprocessing(config.BACKBONE)
 
-    n_classes = 1 if config.PREDICT_ONLY_IM else 6
+    if config.PREDICT_ONLY_IM:
+        n_classes = 1
+    elif config.DATABASE == 'CCA':
+        n_classes = 6
+    elif config.DATABASE == 'BULB':
+        n_classes = 6
+    else:
+        raise Exception('Invalid database')
+
     activation = 'sigmoid' if config.PREDICT_ONLY_IM else 'softmax'
 
     # create model

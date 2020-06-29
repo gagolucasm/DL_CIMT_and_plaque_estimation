@@ -12,8 +12,8 @@ def get_regicor_data(database):
         4-"imta_lcca_s": Is the mean value from IMT in left side of the CA
         5- "imta_rcca_s": Is the mean value from IMT in right side of the CA
         """
-        imts_regicor = pd.read_csv('datasets/CCA/REGICOR_4000/imt_data.csv', header=None)
-        base_regicor_img_path = 'datasets/CCA/REGICOR_4000/CCA2_png'
+        imts_regicor = pd.read_csv('../datasets/CCA/REGICOR_4000/imt_data.csv', header=None)
+        base_regicor_img_path = '../datasets/CCA/REGICOR_4000/CCA2_png'
 
     elif database == 'BULB':
         """
@@ -23,8 +23,8 @@ def get_regicor_data(database):
         4-"imta_lbul_s": Is the mean value from IMT in left side of the CA
         5- "imta_rbul_s": Is the mean value from IMT in right side of the CA
         """
-        imts_regicor = pd.read_csv('datasets/BULB/REGICOR_3000/imt_dataBULB.csv', header=None)
-        base_regicor_img_path = 'datasets/BULB/REGICOR_3000/BULB2_png'
+        imts_regicor = pd.read_csv('../datasets/BULB/REGICOR_3000/imt_dataBULB.csv', header=None)
+        base_regicor_img_path = '../datasets/BULB/REGICOR_3000/BULB2_png'
 
     else:
         raise Exception('Database not recognized')

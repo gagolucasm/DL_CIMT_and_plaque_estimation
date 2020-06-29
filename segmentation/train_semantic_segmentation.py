@@ -45,6 +45,8 @@ def preprocess_masks(masks, binarize=False):
     if config.DATABASE == 'BULB':
         # classes start at 1, this generates an extra dim when using to categorical
         masks = [cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY) - 1 for mask in masks]
+        if config.SINGLE_IMT_CLASS_BULB:
+            masks = preprocess_mask_BULB(masks)
     else:
         masks = [cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY) for mask in masks]
 
@@ -76,6 +78,17 @@ def prepare_mask_for_plotting(img):
         img[np.where((img == key).all(axis=2))] = color_dict[key]
     return img
 
+
+def preprocess_mask_BULB(mask):
+    """
+    Converts doubtful classes into IMT
+    :param mask: original mask
+    :return: mask with classes  IMT LEFT doubtful and IMT RIGHT doubtful replaced for IMT reliable
+    """
+    mask = np.array(mask)
+    np.putmask(mask, mask == 2, 3)
+    np.putmask(mask, mask == 4, 3)
+    return mask
 
 def plot_img_and_mask(images, masks, index=None, result=None, paths=None):
     """
@@ -273,7 +286,7 @@ if __name__ == '__main__':
 
     callbacks = [
         keras.callbacks.ModelCheckpoint(best_weights_path, save_weights_only=True, save_best_only=True, mode='min'),
-        keras.callbacks.ReduceLROnPlateau(),
+        keras.callbacks.ReduceLROnPlateau(patience=10),
         keras.callbacks.EarlyStopping(patience=20, monitor='val_loss')
     ]
 

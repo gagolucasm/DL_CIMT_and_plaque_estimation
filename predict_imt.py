@@ -6,7 +6,7 @@ import time
 import cv2
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
+import pingouin as pg
 import tensorflow as tf
 from matplotlib import pyplot as plt
 from tensorflow.keras import backend as keras_backend
@@ -96,13 +96,16 @@ def get_metrics(df, exp_id, target_columns, subset=None, compare=True):
                 print('{} Correlation coeficient: {:.4f}'.format(nn_prediction_mode,
                                                                  df['gt_{}'.format(nn_prediction_mode)].corr(
                                                                      df['mdm_{}_est'.format(nn_prediction_mode)])))
-            f, ax = plt.subplots(1, figsize=(8, 5))
-            sm.graphics.mean_diff_plot(df['nn_predictions_{}'.format(nn_prediction_mode)].to_numpy(),
-                                       df['gt_{}'.format(nn_prediction_mode)].to_numpy(), ax=ax)
-            plt.title('Error {}, exp: {}'.format(nn_prediction_mode, exp_id))
+
+            ax = pg.plot_blandaltman(df['nn_predictions_{}'.format(nn_prediction_mode)].to_numpy(),
+                                     df['gt_{}'.format(nn_prediction_mode)].to_numpy())
+            ax.set_xlabel('Average of CIMT values (mm)')
+            ax.set_ylabel('Difference of CIMT values (mm)')
+            # plt.title('Error {}, exp: {}'.format(nn_prediction_mode, exp_id))
             plt.show()
             ax = df.plot.scatter(x='gt_{}'.format(nn_prediction_mode),
                                  y='nn_predictions_{}'.format(nn_prediction_mode))
+            ax.plot([0, 1], [0, 1], transform=ax.transAxes)
             plt.title('Scatter plot {}, exp: {}'.format(nn_prediction_mode, exp_id))
             plt.show()
             if nn_prediction_mode == 'imt_max':
@@ -178,6 +181,7 @@ def evaluate_model(model, dataframe, input_column, target_columns, input_shape, 
                              target_columns=target_columns))
 
     # Can be optimized using a generator, but I found ordering errors in tf 2.2 complete generator with shuffle=False
+    print('Predicting values from the complete dataframe, this could take a while')
     dataframe['nn_prediction'] = dataframe[input_column].apply(
         lambda x: nn_predict_imt(path=x, model=model, input_shape=input_shape,
                                  target_columns=target_columns))
@@ -239,7 +243,7 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
 
     # Define experiment id
     output_id = '_'.join([key.replace('imt_', '') for key, value in target_columns.items() if value['predict']])
-    experiment_id = '{}_{}_{}_{}.h5'.format(database, input_type, input_shape[0], output_id)
+    experiment_id = '{}_{}_{}_{}'.format(database, input_type, input_shape[0], output_id)
     print("Experiment id: {}".format(experiment_id))
 
     # Set random seeds
