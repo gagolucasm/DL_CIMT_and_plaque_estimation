@@ -4,7 +4,6 @@
 import cv2
 import numpy as np
 import pandas as pd
-import pingouin as pg
 from matplotlib import pyplot as plt
 from skimage.measure import label
 
@@ -151,63 +150,16 @@ if __name__ == '__main__':
     df['predicted_imt_avg'] = df['predicted_imt_tuple'].apply(lambda x: x[0])
     df['predicted_imt_max'] = df['predicted_imt_tuple'].apply(lambda x: x[1])
     df = df.drop(columns=['predicted_imt_tuple'])
-
-    # Calculate errors
-    df['imt_error_max'] = df['gt_imt_max'] - df['predicted_imt_max']
-    df['imt_error_avg'] = df['gt_imt_avg'] - df['predicted_imt_avg']
     df['gt_plaque'] = df['gt_imt_max'].apply(lambda x: 1 if x > 1.5 else 0)
 
-    ax = df['predicted_imt_max'].hist()
-    plt.title('Predicted imt max histogram')
-    plt.show()
+    # Shuffle dataframe
+    df = df.sample(frac=1, random_state=config.RANDOM_SEED).reset_index(drop=True)
 
-    df['imt_squared_error_max'] = np.square(df['imt_error_max'])
-    df['imt_squared_error_avg'] = np.square(df['imt_error_avg'])
-    print('IMT max error:         {}'.format(df['imt_error_max'].mean()))
-    print('IMT max squared error: {}'.format(df['imt_squared_error_max'].mean()))
+    # Separate into train, valid and test. The returning df has a column indicating the assignment
+    _, _, _, df = helpers.train_validate_test_split(df, train_percent=config.TRAIN_PERCENTAGE,
+                                                    validate_percent=config.VAL_PERCENTAGE,
+                                                    test_percent=config.TEST_PERCENTAGE)
 
-    df['imt_error_max'].hist()
-    print('IMT avg error: {}'.format(df['imt_error_avg'].mean()))
-    print('IMT avg squared error: {}'.format(df['imt_squared_error_avg'].mean()))
-
-    if config.DEBUG:
-        # Evaluate images with the highest error
-        df['imt_error_avg'].hist()
-        df = df.sort_values(by=['imt_error_avg'])
-
-        print('Showing images with the highest error')
-        for key in df.index[:3]:
-            explore_result(df, key)
-
-    ax = pg.plot_blandaltman(df['predicted_imt_max'].to_numpy(),
-                             df['gt_imt_max'].to_numpy(), ax=ax)
-    ax.set_xlabel('Average of CIMT values (mm)')
-    ax.set_ylabel('Difference of CIMT values (mm)')
-    plt.show()
-
-    f, ax = plt.subplots(1, figsize=(8, 5))
-    ax = pg.plot_blandaltman(df['predicted_imt_avg'].to_numpy(),
-                             df['gt_imt_avg'].to_numpy(), ax=ax)
-    ax.set_xlabel('Average of CIMT values (mm)')
-    ax.set_ylabel('Difference of CIMT values (mm)')
-    plt.show()
-
-    print('IMT max correlation coefficient: {}'.format(df['gt_imt_max'].corr(df['predicted_imt_max'])))
-    print('IMT avg correlation coefficient: {}'.format(df['gt_imt_avg'].corr(df['predicted_imt_avg'])))
-
-    ax = df.plot.scatter(x='gt_imt_max', y='predicted_imt_max')
-    ax.plot([0, 1], [0, 1], transform=ax.transAxes)
-    plt.title('Scatter plot IMT max')
-    plt.show()
-
-    ax = df.plot.scatter(x='gt_imt_avg', y='predicted_imt_avg')
-    ax.plot([0, 1], [0, 1], transform=ax.transAxes)
-    plt.title('Scatter plot IMT average')
-    plt.show()
-
-    df['predicted_plaque'] = df['predicted_imt_max'].apply(lambda x: 1 if x > 1.5 else 0)
-    df['gt_plaque'].value_counts()
-    df['predicted_plaque'].value_counts()
-
-    helpers.get_classification_results(df['gt_plaque'].to_numpy(),
-                                       df['predicted_plaque'].to_numpy())
+    mode_list = ['imt_max', 'imt_avg']
+    helpers.evaluate_performance(dataframe=df, mode_list=mode_list, compare_results=config.COMPARE_RESULTS,
+                                 exp_id=config.DATABASE)

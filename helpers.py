@@ -6,6 +6,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import pingouin as pg
 from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix
 
@@ -193,3 +194,104 @@ def plot_training_history(history, experiment_id):
     plt.legend(loc="upper left")
     plt.grid(True)
     plt.show()
+
+
+def get_metrics(df, exp_id, mode_list, subset=None, compare=True):
+    """
+    Generate a report of the performance of a model. A subset can be specified, and results can be compared with the ones
+    in https://doi.org/10.1016/j.artmed.2019.101784 .
+    :param mode_list: list of modes to predict, could be any combination of 'plaque', 'max' and 'avg'
+    :param exp_id: string representing the experiment
+    :param df: pandas dataframe with paths to images of interest for the experiment
+    :param subset: subset of data to evaluate, can be train, valid or test.
+    :param compare: boolean indicating if results should be compared with the ones in M.d.M Vila et al.
+    """
+
+    for mode in mode_list:
+        print('\nPredictions of {}'.format(mode))
+        # TODO: repeated lines, convert into functions
+        if subset is not None:
+            df = df[df['training_group'] == subset]
+            print('Filtering to {}'.format(subset))
+        if mode != 'plaque':
+            print('Mean {} nn predictions error: {:.4f}'.format(mode,
+                                                                df['predicted_{}_error'.format(
+                                                                    mode)].mean()))
+            print('Mean {} nn predictions squared error: {:.4f}'.format(mode,
+                                                                        df['predicted_{}_squared_error'.format(
+                                                                            mode)].mean()))
+            print('{} Correlation coefficient: {:.4f}'.format(mode,
+                                                              df['gt_{}'.format(mode)].corr(
+                                                                  df['predicted_{}'.format(mode)])))
+            if compare:
+                print('MdM results for this subset:')
+                print('Mean {} nn predictions error: {:.4f}'.format(mode,
+                                                                    df['mdm_predicted_{}_error'.format(
+                                                                        mode)].mean()))
+                print('Mean {} nn predictions squared error: {:.4f}'.format(mode,
+                                                                            df[
+                                                                                'mdm_predicted_{}_squared_error'.format(
+                                                                                    mode)].mean()))
+                print('{} Correlation coeficient: {:.4f}'.format(mode,
+                                                                 df['gt_{}'.format(mode)].corr(
+                                                                     df['mdm_{}_est'.format(mode)])))
+
+            ax = pg.plot_blandaltman(df['predicted_{}'.format(mode)].to_numpy(),
+                                     df['gt_{}'.format(mode)].to_numpy())
+            ax.set_xlabel('Average of CIMT values (mm)')
+            ax.set_ylabel('Difference of CIMT values (mm)')
+            # plt.title('Error {}, exp: {}'.format(nn_prediction_mode, exp_id))
+            plt.show()
+            ax = df.plot.scatter(x='gt_{}'.format(mode),
+                                 y='predicted_{}'.format(mode))
+            ax.plot([0, 1], [0, 1], transform=ax.transAxes)
+            plt.title('Scatter plot {}, exp: {}'.format(mode, exp_id))
+            plt.show()
+            if mode == 'imt_max':
+                for i in range(10, 16):
+                    print('\n Thr: ' + str(i / 10))
+                    df['predicted_plaque'] = df['predicted_{}'.format(mode)].apply(
+                        lambda x: 1 if x > i / 10 else 0)
+                    get_classification_results(df['gt_plaque'].to_numpy(),
+                                               df['predicted_plaque'].to_numpy())
+                    if compare:
+                        print('MdM result:')
+                        df['mdm_predicted_plaque'] = df['mdm_{}_est'.format(mode)].apply(
+                            lambda x: 1 if x > i / 10 else 0)
+                        get_classification_results(df['gt_plaque'].to_numpy(),
+                                                   df['mdm_predicted_plaque'].to_numpy())
+        else:
+            for i in range(1, 11):
+                print('\n Thr: ' + str(i / 10))
+                df['predicted_plaque'] = df['predicted_{}'.format(mode)].apply(
+                    lambda x: 1 if x > i / 10 else 0)
+                get_classification_results(df['gt_plaque'].to_numpy(),
+                                           df['predicted_plaque'].to_numpy())
+
+
+def evaluate_performance(dataframe, mode_list, exp_id, compare_results=False):
+    """
+    Evaluates model on train, validation and test data.
+    :param exp_id: string representing the experiment
+    :param target_columns: name of the columns forming the output
+    :param compare_results: boolean indicating if results should be compared to the ones in M.d.M Vila et al.
+    :param dataframe: dataframe containing information relevant to the experiment
+    :return:
+    """
+
+    for mode in mode_list:
+        prediction_column_name = 'predicted_{}'.format(mode)
+        error_column_name = 'predicted_{}_error'.format(mode)
+        squared_error_column_name = 'predicted_{}_squared_error'.format(mode)
+        dataframe[error_column_name] = dataframe['gt_{}'.format(mode)] - dataframe[prediction_column_name]
+        dataframe[squared_error_column_name] = dataframe[error_column_name] * dataframe[error_column_name]
+        if compare_results and mode != 'plaque':
+            dataframe['mdm_' + error_column_name] = dataframe['gt_{}'.format(mode)] - dataframe[
+                'mdm_{}_est'.format(mode)]
+            dataframe['mdm_' + squared_error_column_name] = dataframe['mdm_' + error_column_name] * dataframe[
+                'mdm_' + error_column_name]
+
+    get_metrics(dataframe, exp_id=exp_id, subset=None, mode_list=mode_list, compare=compare_results)
+    get_metrics(dataframe, exp_id=exp_id, subset='train', mode_list=mode_list, compare=compare_results)
+    get_metrics(dataframe, exp_id=exp_id, subset='valid', mode_list=mode_list, compare=compare_results)
+    get_metrics(dataframe, exp_id=exp_id, subset='test', mode_list=mode_list, compare=compare_results)
