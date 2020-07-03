@@ -2,6 +2,7 @@ from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Input, BatchNormalization
 from tensorflow.keras.models import Model
+from tensorflow.keras.utils import plot_model
 
 import config
 
@@ -62,3 +63,8 @@ def get_imt_prediction_model():
     if config.DEBUG:
         print(model.summary())
     return model
+
+
+if __name__ == '__main__':
+    model = get_imt_prediction_model()
+    plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=False)

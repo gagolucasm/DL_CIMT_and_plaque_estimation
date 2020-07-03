@@ -38,6 +38,7 @@ def get_data_augmentation_pipeline():
             iaa.ElasticTransformation(alpha=10, sigma=1),
             iaa.Add(value=(-55, 55), per_channel=True),
             iaa.JpegCompression(compression=random.randint(0, 90)),
+            iaa.imgcorruptlike.SpeckleNoise(),
             iaa.MotionBlur(k=7),
             iaa.MultiplyHueAndSaturation(mul=random.random() * 2),
             iaa.AllChannelsHistogramEqualization(),

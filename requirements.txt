@@ -14,5 +14,5 @@ scikit-image~=0.16.2
 hiplot~=0.1.10
 kerastuner~=1.0.1
 segmentation_models~=1.0.0
-
+imgaug~=0.4.0
 pingouin~=0.3.5
