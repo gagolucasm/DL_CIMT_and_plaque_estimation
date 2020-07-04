@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pingouin as pg
 from matplotlib import pyplot as plt
-from sklearn.metrics import confusion_matrix
+from sklearn import metrics
 
 
 def filter_dataframe(dataframe, database):
@@ -48,18 +48,32 @@ def get_classification_results(gt_plaque, pred_plaque):
     :param gt_plaque: numpy array with the gt values of plaque
     :param pred_plaque: numpy array with the predicted values of plaque
     """
-    cm1 = confusion_matrix(gt_plaque, pred_plaque, labels=[1, 0])
-    print('Confusion Matrix : \n tp   fp\n fn   tn\n', cm1)
+    tn, fp, fn, tp = metrics.confusion_matrix(gt_plaque, pred_plaque, labels=[0, 1]).ravel()  # tn, fp, fn, tp
+    print("""Confusion Matrix : 
+                            pred_neg       pred_pos
+           actual_neg        tn: {}         fp: {}  
+           actual_pos        fn: {}         tp: {}  """.format(tn, fp, fn, tp))
 
-    total1 = sum(sum(cm1))
-    accuracy1 = (cm1[0, 0] + cm1[1, 1]) / total1
-    sensitivity1 = cm1[0, 0] / (
-            cm1[0, 0] + cm1[0, 1])  # true positive rate, the recall, or probability of detection
-    specificity1 = cm1[1, 1] / (cm1[1, 0] + cm1[
-        1, 1])  # measures the proportion of actual negatives that are correctly identified as such
-    print('Accuracy:    {:.4f}'.format(accuracy1))
-    print('Sensitivity: {:.4f}'.format(sensitivity1))
-    print('Specificity: {:.4f}'.format(specificity1))
+    precision = tp / (tp + fp)  # closeness of the measurements to each other
+
+    specificity = tn / (tn + fp)  # (also called the true negative rate) measures the proportion of actual negatives
+    # that are correctly identified as such (e.g., the percentage of healthy people who are correctly identified as not
+    # having the condition).
+
+    accuracy = (tn + tp) / (tn + tp + fn + fp)  # closeness of the measurements to a specific value
+
+    sensitivity = tp / (tp + fn)  # (also called the true positive rate, the epidemiological/clinical sensitivity,
+    # the recall, or probability of detection[1] in some fields) measures the proportion of actual positives that
+    # are correctly identified as such (e.g., the percentage of sick people who are correctly identified
+    # as having the condition)
+
+    f1_score = 2 * (precision * sensitivity) / (precision + sensitivity)
+
+    print('Accuracy:    {:.4f}'.format(accuracy))
+    print('Precision:   {:.4f}'.format(precision))
+    print('Sensitivity: {:.4f}'.format(sensitivity))
+    print('Specificity: {:.4f}'.format(specificity))
+    print('F1 Score:    {:.4f}'.format(f1_score))
 
 
 def add_previous_results(dataframe, database):

@@ -150,7 +150,7 @@ if __name__ == '__main__':
     df['predicted_imt_avg'] = df['predicted_imt_tuple'].apply(lambda x: x[0])
     df['predicted_imt_max'] = df['predicted_imt_tuple'].apply(lambda x: x[1])
     df = df.drop(columns=['predicted_imt_tuple'])
-    df['gt_plaque'] = df['gt_imt_max'].apply(lambda x: 1 if x > 1.5 else 0)
+    df['gt_plaque'] = df['gt_imt_max'].apply(lambda x: 1 if x >= 1.5 else 0)
 
     # Shuffle dataframe
     df = df.sample(frac=1, random_state=config.RANDOM_SEED).reset_index(drop=True)

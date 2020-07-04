@@ -174,7 +174,7 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
         # Add columns with results from https://doi.org/10.1016/j.artmed.2019.101784
         df = add_previous_results(df, database=database)
 
-    df['gt_plaque'] = df['gt_imt_max'].apply(lambda x: 1 if x > 1.5 else 0)
+    df['gt_plaque'] = df['gt_imt_max'].apply(lambda x: 1 if x >= 1.5 else 0)
 
     device_name = tf.test.gpu_device_name()
     if device_name != '/device:GPU:0':

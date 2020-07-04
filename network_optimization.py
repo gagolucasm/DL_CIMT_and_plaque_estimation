@@ -117,7 +117,7 @@ if __name__ == '__main__':
     # Change index format #TODO: fix in previous step
     df.index = df.index.map(lambda x: x[4:-1])
 
-    df['gt_plaque'] = df['gt_imt_max'].apply(lambda x: 1 if x > 1.5 else 0)
+    df['gt_plaque'] = df['gt_imt_max'].apply(lambda x: 1 if x >= 1.5 else 0)
 
     device_name = tf.test.gpu_device_name()
     if device_name != '/device:GPU:0':
