@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+import os
 
 import cv2
 import numpy as np
@@ -70,6 +71,8 @@ def calculate_imt(mask_path, thr=config.IMT_THRESHOLD, database=config.DATABASE)
     :param database: name of the database, can be CCA or BULB
     :return: mean and max IMT values
     """
+    if 'segmentation/' not in mask_path:
+        mask_path = os.path.join('segmentation', mask_path)
     mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE) / 255.
     _, mask = cv2.threshold(mask, thr, 1, cv2.THRESH_BINARY)
 

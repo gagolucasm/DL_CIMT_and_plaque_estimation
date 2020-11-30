@@ -8,7 +8,8 @@ import config
 
 
 def get_imt_prediction_model():
-    input_image = Input(shape=(config.INPUT_SHAPE[0], config.INPUT_SHAPE[1], 1), name='input_image')
+    input_dim = 2 if config.INPUT_TYPE == 'img_and_mask' else 1
+    input_image = Input(shape=(config.INPUT_SHAPE[0], config.INPUT_SHAPE[1], input_dim), name='input_image')
     base_model = Conv2D(32, (3, 3), activation='relu')(input_image)
     base_model = Conv2D(32, (3, 3), activation='relu')(base_model)
     base_model = MaxPooling2D(pool_size=(2, 2))(base_model)

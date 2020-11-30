@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 import os
-import time
 
 import cv2
 import numpy as np
@@ -34,18 +33,27 @@ def weighted_bce(y_true, y_pred):
     return weighted_bce
 
 
-def nn_predict_imt(path, model, input_shape, target_columns):
+def nn_predict_imt(img_path, mask_path, model, input_shape, target_columns):
     """
     Predicts the IMT for an image given its path
+    :param img_path: path to the image to predict. If the original image is not an input, replace with None
+    :param mask_path: path to the mask to predict. If the mask is not an input, replace with None
+    :param model: tensorflow model for IMT prediction
     :param target_columns: name of the columns forming the output
     :param input_shape: shape of the input image
-    :param path: path to the image to predict
-    :param model: tensorflow model for IMT prediction
     :return: predicted IMT values, specific targets depends on the model
     """
-    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE) / 255.
-    img = cv2.resize(img, input_shape)
-    prediction = model.predict(np.expand_dims(img, axis=0))
+    if img_path is not None:
+        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE) / 255.
+        img = cv2.resize(img, input_shape)
+        input_data = img
+    if mask_path is not None:
+        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE) / 255.
+        mask = cv2.resize(mask, input_shape)
+        input_data = mask
+    if img_path is not None and mask_path is not None:
+        input_data = np.dstack((img, mask))
+    prediction = model.predict(np.expand_dims(input_data, axis=0))
 
     result = {}
     count = 0
@@ -99,15 +107,17 @@ def predict_complete_dataframe(model, dataframe, input_column, target_columns, i
     :param input_column: name of the column containing the paths to the input images
     :return:
     """
-    if debug:
-        print(nn_predict_imt(path=dataframe.complete_path.values[0], model=model, input_shape=input_shape,
-                             target_columns=target_columns))
 
     # Can be optimized using a generator, but I found ordering errors in tf 2.2 complete generator with shuffle=False
     print('Predicting values from the complete dataframe, this could take a while')
-    dataframe['nn_prediction'] = dataframe[input_column].apply(
-        lambda x: nn_predict_imt(path=x, model=model, input_shape=input_shape,
-                                 target_columns=target_columns))
+    nn_predictions = []
+    for index, row in dataframe.iterrows():
+        img_path = None if input_column == 'mask_path' else row['complete_path']
+        mask_path = None if input_column == 'complete_path' else row['mask_path']
+        nn_predictions.append(
+            nn_predict_imt(img_path=img_path, mask_path=mask_path, model=model, input_shape=input_shape,
+                           target_columns=target_columns))
+    dataframe['nn_prediction'] = nn_predictions
     for key, value in target_columns.items():
         if value['predict']:
             prediction_column_name = 'predicted_{}'.format(key)
@@ -123,7 +133,8 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
                         n_workers=config.WORKERS, max_queue_size=config.MAX_QUEUE_SIZE,
                         data_augmentation_params=config.DATA_AUGMENTATION_PARAMS, train_percent=config.TRAIN_PERCENTAGE,
                         valid_percent=config.VAL_PERCENTAGE, test_percent=config.TEST_PERCENTAGE,
-                        resume_training=config.RESUME_TRAINING, silent_mode=config.SILENT_MODE):
+                        resume_training=config.RESUME_TRAINING, silent_mode=config.SILENT_MODE,
+                        prefix=config.EXPERIMENT_PREFIX):
     """
     Complete training pipeline. Values can be set on the config.py or directly on function call.
 
@@ -148,11 +159,13 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
     :param test_percent: percentage of values used for testing
     :param resume_training: boolean indicating if previous best performing model should be loaded before training
     :param silent_mode: boolean indicating if all outputs should be suppressed
+    :param prefix: string to distinguish between experiments
+
     """
 
     # Define experiment id
     output_id = '_'.join([key.replace('imt_', '') for key, value in target_columns.items() if value['predict']])
-    experiment_id = '{}_{}_{}_{}'.format(database, input_type, input_shape[0], output_id)
+    experiment_id = '{}_{}_{}_{}_{}'.format(prefix, database, input_type, input_shape[0], output_id)
     print("Experiment id: {}".format(experiment_id))
 
     # Set random seeds
@@ -160,7 +173,7 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
     np.random.seed(random_seed)
 
     # Load data from disk
-    data = np.load(os.path.join('segmentation', 'complete_data_{}.npy'.format(database)))
+    data = np.load(os.path.join('segmentation', 'complete_data_{}.npy'.format(database)), allow_pickle=True)
     data = data[()]['data']
 
     # Convert to dataframe and filter invalid values
@@ -169,6 +182,8 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
 
     # Change index format #TODO: fix in previous step
     df.index = df.index.map(lambda x: x[4:-1])
+    if database == 'CCA':
+        df['mask_path'] = df['mask_path'].apply(lambda x: "segmentation/{}".format(x))  # TODO: Fix
 
     if compare_results:
         # Add columns with results from https://doi.org/10.1016/j.artmed.2019.101784
@@ -177,15 +192,20 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
     df['gt_plaque'] = df['gt_imt_max'].apply(lambda x: 1 if x >= 1.5 else 0)
 
     device_name = tf.test.gpu_device_name()
-    if device_name != '/device:GPU:0':
-        raise SystemError('GPU device not found')
-    if not silent_mode:
-        print('Found GPU at: {}'.format(device_name))
+    if config.FORCE_GPU:
+        if device_name != '/device:GPU:0':
+            raise SystemError('GPU device not found')
+        if not silent_mode:
+            print('Found GPU at: {}'.format(device_name))
 
     if input_type == 'img':
         input_column = 'complete_path'
     elif input_type == 'mask':
         input_column = 'mask_path'
+    elif input_type == 'img_and_mask':
+        input_column = input_type
+    else:
+        raise NotImplementedError
 
     # Shuffle dataframe
     df = df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
@@ -225,17 +245,18 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
 
     model.compile(optimizer=optimizer, loss=losses, loss_weights=loss_weights, metrics=metrics)
 
+
     # Define data generators
     train_generator = data_generator(mode='train', dataframe=df_train, input_column=input_column,
                                      target_column=target_column, batch_size=batch_size,
                                      data_augmentation_params=data_augmentation_params, input_shape=input_shape
-                                     , n_outputs=n_outputs)
+                                     , n_outputs=n_outputs, seed=config.RANDOM_SEED)
     valid_generator = data_generator(mode='valid', dataframe=df_valid, input_column=input_column,
                                      target_column=target_column, batch_size=batch_size, input_shape=input_shape
-                                     , n_outputs=n_outputs)
+                                     , n_outputs=n_outputs, seed=config.RANDOM_SEED)
     test_generator = data_generator(mode='test', dataframe=df_test, input_column=input_column,
                                     target_column=target_column, batch_size=batch_size, input_shape=input_shape
-                                    , n_outputs=n_outputs)
+                                    , n_outputs=n_outputs, seed=config.RANDOM_SEED)
 
     if debug:
         helpers.test_generator_output(test_generator, n_images=2)
@@ -246,7 +267,7 @@ def train_imt_predictor(database=config.DATABASE, input_type=config.INPUT_TYPE, 
     if train:
         callbacks = [ModelCheckpoint(filepath=weights_path, save_best_only=True, verbose=True, monitor='val_loss'),
                      TensorBoard(
-                         log_dir='logs/run_{}_{}.h5'.format(experiment_id, time.time())),
+                         log_dir='logs/run_{}.h5'.format(experiment_id), profile_batch=0, write_graph=False),
                      ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=15, min_lr=1e-6, verbose=True),
                      EarlyStopping(monitor='val_loss', patience=early_stopping_patience)]
 
