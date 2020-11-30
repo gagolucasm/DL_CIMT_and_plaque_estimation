@@ -10,6 +10,8 @@ import pingouin as pg
 from matplotlib import pyplot as plt
 from sklearn import metrics
 
+import config
+
 
 def filter_dataframe(dataframe, database):
     """
@@ -86,8 +88,8 @@ def add_previous_results(dataframe, database):
     assert database in ['CCA', 'BULB'], 'No previous results for this database'
 
     if database == 'CCA':
-        df_names = pd.read_csv('results_mdm_et_al/names_postprT56_1cm.csv', names=['file_name'], header=None)
-        df_prev_results = pd.read_csv('results_mdm_et_al/imts_postprT56_1cm.csv',
+        df_names = pd.read_csv('results_vila_et_al/names_postprT56_1cm.csv', names=['file_name'], header=None)
+        df_prev_results = pd.read_csv('results_vila_et_al/imts_postprT56_1cm.csv',
                                       names=['mdm_imtmax_est',  # Max IMT estimated with Tiramisu56
                                              'gt_imtm_CCA',  # Max IMT from Ground Truth (AMC)
                                              'mdm_imtavg_est',  # Mean IMT estimated with Tiramisu56
@@ -96,9 +98,9 @@ def add_previous_results(dataframe, database):
 
         df_prev_results.index = df_names['file_name']
     elif database == 'BULB':
-        df_names = pd.read_csv('results_mdm_et_al/names__postprT67_BUnewGT_4L.csv', names=['file_name'],
+        df_names = pd.read_csv('results_vila_et_al/names__postprT67_BUnewGT_4L.csv', names=['file_name'],
                                header=None)
-        df_prev_results = pd.read_csv('results_mdm_et_al/imts_postprT67_BUnewGT_4L.csv',
+        df_prev_results = pd.read_csv('results_vila_et_al/imts_postprT67_BUnewGT_4L.csv',
                                       names=['mdm_imtmax_est',  # Max IMT estimated with Tiramisu56
                                              'gt_imtm_CCA',  # Max IMT from Ground Truth (AMC)
                                              'mdm_imtavg_est',  # Mean IMT estimated with Tiramisu56
@@ -210,7 +212,7 @@ def plot_training_history(history, experiment_id):
     plt.show()
 
 
-def get_metrics(df, exp_id, mode_list, subset=None, compare=True):
+def get_metrics(df, exp_id, mode_list, subset=None, compare=True, save_figure=False):
     """
     Generate a report of the performance of a model. A subset can be specified, and results can be compared with the ones
     in https://doi.org/10.1016/j.artmed.2019.101784 .
@@ -259,15 +261,17 @@ def get_metrics(df, exp_id, mode_list, subset=None, compare=True):
             ax = df.plot.scatter(x='gt_{}'.format(mode),
                                  y='predicted_{}'.format(mode))
             ax.plot([0, 1], [0, 1], transform=ax.transAxes)
-            plt.title('Scatter plot {}, exp: {}'.format(mode, exp_id))
+            plt.title('Scatter plot')
+            if save_figure:
+                plt.savefig("figures/{}_scatter_plot.png".format(exp_id), bbox_inches='tight', pad_inches=0)
             plt.show()
             if mode == 'imt_max':
                 for i in range(10, 16):
                     print('\n Thr: ' + str(i / 10))
-                    df['predicted_plaque'] = df['predicted_{}'.format(mode)].apply(
+                    df['predicted_plaque_thr'] = df['predicted_{}'.format(mode)].apply(
                         lambda x: 1 if x > i / 10 else 0)
                     get_classification_results(df['gt_plaque'].to_numpy(),
-                                               df['predicted_plaque'].to_numpy())
+                                               df['predicted_plaque_thr'].to_numpy())
                     if compare:
                         print('MdM result:')
                         df['mdm_predicted_plaque'] = df['mdm_{}_est'.format(mode)].apply(
@@ -277,10 +281,10 @@ def get_metrics(df, exp_id, mode_list, subset=None, compare=True):
         else:
             for i in range(1, 11):
                 print('\n Thr: ' + str(i / 10))
-                df['predicted_plaque'] = df['predicted_{}'.format(mode)].apply(
+                df['predicted_plaque_thr'] = df['predicted_{}'.format(mode)].apply(
                     lambda x: 1 if x > i / 10 else 0)
                 get_classification_results(df['gt_plaque'].to_numpy(),
-                                           df['predicted_plaque'].to_numpy())
+                                           df['predicted_plaque_thr'].to_numpy())
 
 
 def evaluate_performance(dataframe, mode_list, exp_id, compare_results=False):
@@ -305,7 +309,8 @@ def evaluate_performance(dataframe, mode_list, exp_id, compare_results=False):
             dataframe['mdm_' + squared_error_column_name] = dataframe['mdm_' + error_column_name] * dataframe[
                 'mdm_' + error_column_name]
 
-    get_metrics(dataframe, exp_id=exp_id, subset=None, mode_list=mode_list, compare=compare_results)
+    get_metrics(dataframe, exp_id=exp_id, subset=None, mode_list=mode_list, compare=compare_results,
+                save_figure=config.SAVE_FIGURES)
     get_metrics(dataframe, exp_id=exp_id, subset='train', mode_list=mode_list, compare=compare_results)
     get_metrics(dataframe, exp_id=exp_id, subset='valid', mode_list=mode_list, compare=compare_results)
     get_metrics(dataframe, exp_id=exp_id, subset='test', mode_list=mode_list, compare=compare_results)

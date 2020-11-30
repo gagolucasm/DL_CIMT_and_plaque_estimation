@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import segmentation_models as sm
 import tqdm
+from tensorflow.keras.utils import plot_model
 
 from segmentation import config, helpers
 
@@ -83,7 +84,9 @@ if __name__ == '__main__':
     activation = 'sigmoid' if config.PREDICT_ONLY_IM else 'softmax'
 
     # create model
-    model = sm.Unet(config.BACKBONE, classes=n_classes, activation=activation)
+    model = sm.Unet(config.BACKBONE, classes=n_classes, activation=activation, input_shape=(512, 512, 3))
+
+    plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=False, rankdir='TB')
 
     best_weights_path = 'weights/best_model_{}_unet_ef0_weights.h5'.format(config.DATABASE)
     model.load_weights(best_weights_path)
