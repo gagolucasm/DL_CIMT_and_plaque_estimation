@@ -2,22 +2,67 @@
 # coding: utf-8
 
 import os
-import sys
 
 import cv2
 import numpy as np
+import pandas as pd
 import segmentation_models as sm
 import tqdm
-from tensorflow.keras.utils import plot_model
 
 from segmentation import config, helpers
 
 
-def predict_all_images(dataframe):
+def get_images_from_id(image_id: str, regicor_imgs_path):
+    possible_cases = [image_id + '156' + '_',
+                      image_id + '156' + '_',
+                      image_id + '84' + '_',
+                      image_id + '60' + '_',
+                      image_id + '705' + '_',
+                      image_id + '060' + '_']
+    images_paths = []
+    for path in regicor_imgs_path:
+        for case in possible_cases:
+            if case in path:
+                images_paths.append(path)
+    images_paths = set(images_paths)
+    if len(images_paths) > 2:
+        print('Incorrect number of paths ({}) retrieved from id {}'.format(len(images_paths), image_id))
+
+    # assert len(images_paths) < 3, 'Incorrect number of paths ({}) retrieved from id {}'.format(len(images_paths),image_id)
+    return images_paths
+
+
+def predict_all_images(base_regicor_img_path, regicor_imgs_path, prediction_folder):
+    df = pd.DataFrame(columns=['img_id', 'complete_path', 'mask_path'])
+    for image_path in tqdm.tqdm(regicor_imgs_path):
+        complete_path = os.path.join(base_regicor_img_path, image_path)
+        image = cv2.imread(complete_path)
+        image = cv2.resize(image, config.INPUT_SHAPE)
+        prediction = np.squeeze(model.predict(np.expand_dims(image, axis=0)))
+        if config.DATABASE == 'BULB' and config.SINGLE_IMT_CLASS_BULB:
+            prediction = prediction[:, :, 4] + prediction[:, :, 3] + prediction[:, :, 2]
+        else:
+            prediction = prediction[:, :, 4]
+
+        prediction = cv2.resize(prediction, (445, 470))  # Original shape
+        prediction = prediction * 255.
+
+        prediction_path = os.path.join(prediction_folder, image_path)
+        prediction_path = prediction_path.replace('jpg', 'png')
+        cv2.imwrite(prediction_path, prediction)
+        df = df.append({'img_id': image_path[:-4],
+                        'complete_path': complete_path,
+                        'mask_path': os.path.join('segmentation', prediction_path)},
+                       ignore_index=True)
+    return df
+
+
+def predict_all_images_old(dataframe, regicor_imgs_path):
     data = {}
     for index, row in tqdm.tqdm(dataframe.iterrows()):
-        images_paths = [i for i in regicor_imgs_path if str(int(row['EstudiDon'])) in i]
-
+        # images_paths = [i for i in regicor_imgs_path if str(int(row['EstudiDon'])) == i[1:6]]
+        images_paths = get_images_from_id(image_id=str(int(row['EstudiDon'])),
+                                          regicor_imgs_path=regicor_imgs_path)
         # Right side
         image_right_path = [i for i in images_paths if 'r{}g'.format(config.DATABASE.lower()[:3]) in i.lower()]
         if len(image_right_path) > 0:
@@ -86,7 +131,7 @@ if __name__ == '__main__':
     # create model
     model = sm.Unet(config.BACKBONE, classes=n_classes, activation=activation, input_shape=(512, 512, 3))
 
-    plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=False, rankdir='TB')
+    # plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=False, rankdir='TB')
 
     best_weights_path = 'weights/best_model_{}_unet_ef0_weights.h5'.format(config.DATABASE)
     model.load_weights(best_weights_path)
@@ -100,16 +145,9 @@ if __name__ == '__main__':
     os.makedirs(prediction_folder, exist_ok=True)
 
     print('[INFO] Predicting all images from {}'.format(config.DATABASE))
-    results_data = predict_all_images(imts_regicor)
+    df = predict_all_images(base_regicor_img_path, regicor_imgs_path, prediction_folder)
     print('[INFO] Prediction done')
-
-    filename = 'complete_data_{}.npy'.format(config.DATABASE)
+    filename = 'complete_data_{}.csv'.format(config.DATABASE)
     print('[INFO] Saving results to disk as {}'.format(filename))
-    np_data = {'data': results_data}
-    np.save(filename, np_data)
-
-    print('[INFO] Saving done, checking integrity')
-    data2 = np.load(filename)
-    data3 = data2[()]['data']
-    assert sys.getsizeof(results_data) == sys.getsizeof(data3), 'Files do not match'
+    df.to_csv(filename, index=False)
     print('[INFO] Done, everything OK. Exiting')

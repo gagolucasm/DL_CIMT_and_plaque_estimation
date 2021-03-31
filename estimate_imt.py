@@ -143,9 +143,8 @@ if __name__ == '__main__':
     # Change index format #TODO: fix in previous step
     df.index = df.index.map(lambda x: x[4:-1])
 
-    if config.COMPARE_RESULTS:
-        # Add columns with results from https://doi.org/10.1016/j.artmed.2019.101784
-        df = helpers.add_previous_results(dataframe=df, database=config.DATABASE)
+    # Add columns with results from https://doi.org/10.1016/j.artmed.2019.101784
+    df = helpers.add_previous_results(dataframe=df, database=config.DATABASE)
 
     # Calculate IMT from mask
     print('Calculating CIMT from segmentation results, this could take a while')
@@ -164,5 +163,5 @@ if __name__ == '__main__':
                                                     test_percent=config.TEST_PERCENTAGE)
 
     mode_list = ['imt_max', 'imt_avg']
-    helpers.evaluate_performance(dataframe=df, mode_list=mode_list, compare_results=config.COMPARE_RESULTS,
-                                 exp_id=config.DATABASE)
+    helpers.evaluate_performance(dataframe=df, mode_list=mode_list,
+                                 exp_id=config.DATABASE, debug=config.DEBUG)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-DATABASE = 'CCA'  # 'BULB' or 'CCA'
+DATABASE = 'BULB'  # 'BULB' or 'CCA'
 PREDICT_ONLY_IM = False  # If True, only binary segmentation will be performed.
 SINGLE_IMT_CLASS_BULB = True  # If True, IMT doubtful will be considered as IMT
 BATCH_SIZE = 4

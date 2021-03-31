@@ -161,15 +161,15 @@ if __name__ == '__main__':
     train_generator = data_generator(mode='train', dataframe=df_train, input_column=input_column,
                                      target_column=target_column, batch_size=config.BATCH_SIZE,
                                      data_augmentation_params=config.DATA_AUGMENTATION_PARAMS,
-                                     input_shape=config.INPUT_SHAPE
+                                     input_shape=config.INPUT_SHAPE, seed=config.RANDOM_SEED
                                      , n_outputs=n_outputs)
     valid_generator = data_generator(mode='valid', dataframe=df_valid, input_column=input_column,
                                      target_column=target_column, batch_size=config.BATCH_SIZE,
-                                     input_shape=config.INPUT_SHAPE
+                                     input_shape=config.INPUT_SHAPE, seed=config.RANDOM_SEED
                                      , n_outputs=n_outputs)
     test_generator = data_generator(mode='test', dataframe=df_test, input_column=input_column,
                                     target_column=target_column, batch_size=config.BATCH_SIZE,
-                                    input_shape=config.INPUT_SHAPE
+                                    input_shape=config.INPUT_SHAPE, seed=config.RANDOM_SEED
                                     , n_outputs=n_outputs)
     TRAINING_STEPS = train_generator.n // train_generator.batch_size
     VALIDATION_STEPS = valid_generator.n // valid_generator.batch_size

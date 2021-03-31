@@ -7,9 +7,11 @@ from tensorflow.keras.utils import plot_model
 import config
 
 
-def get_imt_prediction_model():
-    input_dim = 2 if config.INPUT_TYPE == 'img_and_mask' else 1
-    input_image = Input(shape=(config.INPUT_SHAPE[0], config.INPUT_SHAPE[1], input_dim), name='input_image')
+def get_imt_prediction_model(input_type=config.INPUT_TYPE, input_shape=config.INPUT_SHAPE,
+                             target_columns=config.TARGET_COLUMNS,
+                             dropout_rate=config.DROPOUT_RATE):  # TODO: local variables
+    input_dim = 2 if input_type == 'img_and_mask' else 1
+    input_image = Input(shape=(input_shape[0], input_shape[1], input_dim), name='input_image')
     base_model = Conv2D(32, (3, 3), activation='relu')(input_image)
     base_model = Conv2D(32, (3, 3), activation='relu')(base_model)
     base_model = MaxPooling2D(pool_size=(2, 2))(base_model)
@@ -21,35 +23,35 @@ def get_imt_prediction_model():
     base_model = MaxPooling2D(pool_size=(2, 2))(base_model)
 
     base_model = Flatten()(base_model)
-    base_model = Dense(64, activation='relu')(base_model)
-    base_model = BatchNormalization()(base_model)
-    base_model = Dropout(rate=config.DROPOUT_RATE)(base_model)
+    # base_model = Dense(64, activation='relu')(base_model)
+    # base_model = BatchNormalization()(base_model)
+    base_model = Dropout(rate=dropout_rate)(base_model)
     base_model = Dense(32, activation='relu')(base_model)
     base_model = BatchNormalization()(base_model)
 
     outputs = []
-    if config.TARGET_COLUMNS['imt_max']['predict']:
+    if target_columns['imt_max']['predict']:
         max_imt = Dense(32, activation='relu')(base_model)
-        max_imt = Dropout(rate=config.DROPOUT_RATE)(max_imt)
+        max_imt = Dropout(rate=dropout_rate)(max_imt)
         max_imt = Dense(16, activation='relu')(max_imt)
-        max_imt = Dropout(rate=config.DROPOUT_RATE)(max_imt)
+        max_imt = Dropout(rate=dropout_rate)(max_imt)
         max_imt = Dense(8, activation='relu')(max_imt)
         max_imt = Dense(1)(max_imt)
         max_imt = Activation('relu', name="max_imt", dtype='float32')(
             max_imt)  # For numerical stability in mixed precision
         outputs.append(max_imt)
-    if config.TARGET_COLUMNS['imt_avg']['predict']:
+    if target_columns['imt_avg']['predict']:
         avg_imt = Dense(32, activation='relu')(base_model)
-        avg_imt = Dropout(rate=config.DROPOUT_RATE)(avg_imt)
+        avg_imt = Dropout(rate=dropout_rate)(avg_imt)
         avg_imt = Dense(16, activation='relu')(avg_imt)
-        avg_imt = Dropout(rate=config.DROPOUT_RATE)(avg_imt)
+        avg_imt = Dropout(rate=dropout_rate)(avg_imt)
         avg_imt = Dense(8, activation='relu')(avg_imt)
         avg_imt = Dense(1)(avg_imt)
         avg_imt = Activation('relu', name="avg_imt", dtype='float32')(
             avg_imt)  # For numerical stability in mixed precision
         outputs.append(avg_imt)
 
-    if config.TARGET_COLUMNS['plaque']['predict']:
+    if target_columns['plaque']['predict']:
         # concatenation = concatenate([max_imt, avg_imt, base_model])
         # plaque = Dense(32, activation='relu')(concatenation)
         plaque = Dense(32, activation='relu')(base_model)
