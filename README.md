@@ -79,6 +79,27 @@ to perform an experiment with the parameters selected in the [config.py](config.
 python3 experiments.py
 ```
 
+It will generate a folder per each experiment containing the following information:
+```
+{CCA o BULB}_{input}_{img_size}_{output}/
+├─ input/
+│  ├─ test_data.csv
+│  ├─ train_data.csv
+│  ├─ validation_data.csv
+├─ results/
+│  ├─ bland_altman.png
+│  ├─ complete_predictions.csv
+│  ├─ optimal_plaque_thr.txt
+│  ├─ precision_recall_curve.png
+│  ├─ results.csv
+│  ├─ scatter.png
+├─ training_logs/
+│  ├─ tensorboard_logs
+├─ best_validation_weights.h5
+├─ config.txt
+├─ training_history.csv
+├─ training_losses.png
+```
 [Tensorboard](https://www.tensorflow.org/tensorboard) is used to monitor the experiments, just run 
  ```
 tensorboard --logdir=logs
