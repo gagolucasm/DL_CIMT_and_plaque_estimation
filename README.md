@@ -1,6 +1,6 @@
 # Deep learning techniques for atherosclerotic plaque detection in the carotid artery
 
-This repository contains the code to reproduce the results in "Deep learning techniques for atherosclerotic plaque detection in the carotid artery". It also provides an easy to use framework for future experiments.
+This repository contains the code to reproduce the results in "[An end-to-end framework for intima media measurement and atherosclerotic plaque detection in the carotid artery](https://www.sciencedirect.com/science/article/pii/S0169260722003364)", by Lucas Gago, Maria del Mar Vila, Maria Grau, Beatriz Remeseiro and Laura Igual, published in Computer Methods and Programs in Biomedicine. It also provides an easy to use framework for future experiments.
 
 ![Example from CCA database](images/mosaic_cca_crop.png)
 ## Setup
